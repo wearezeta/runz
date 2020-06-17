@@ -1,0 +1,122 @@
+runz() {
+    RED='\033[0;31m'
+    BLUE='\033[0;34m'
+    YELLOW='\033[1;33m'
+    NC='\033[0m' # No Color
+    
+    #init code
+    if [[ $1 == "setup" ]]; then
+ 		echo -e "[${YELLOW}SETUP INFO${NC}] #############################################################################"   	
+ 		echo -e "[${YELLOW}SETUP INFO${NC}] #              ______     ______     ______   __  __     ______             #"
+ 		echo -e "[${YELLOW}SETUP INFO${NC}] #             /\  ___\   /\  ___\   /\__  _\ /\ \/\ \   /\  == \            #"
+		echo -e "[${YELLOW}SETUP INFO${NC}] #             \ \___  \  \ \  __\   \/_/\ \/ \ \ \_\ \  \ \  _-/            #"
+ 		echo -e "[${YELLOW}SETUP INFO${NC}] #              \/\_____\  \ \_____\    \ \_\  \ \_____\  \ \_\              #"
+ 		echo -e "[${YELLOW}SETUP INFO${NC}] #               \/_____/   \/_____/     \/_/   \/_____/   \/_/              #"
+        echo -e "[${YELLOW}SETUP INFO${NC}] #                                                                           #"
+        echo -e "[${YELLOW}SETUP INFO${NC}] ############################################################################"
+        read -p "App Path:" appPath
+        echo -e "[${YELLOW}SETUP INFO${NC}] New App Path is:$appPath"
+        echo "export WIRE_CLIENT_PATH=$appPath" >>~/.bash_profile
+        echo -e "[${YELLOW}SETUP INFO${NC}] # App Path has been added to your bash_profile"
+        return 0;
+    fi
+    
+
+    #help function
+    if [[ $1 == "help" ]]; then
+        echo -e "[${YELLOW}HELP INFO${NC}] #############################################################################"
+        echo -e "[${YELLOW}HELP INFO${NC}] #  execution of runz: runz pathToApp testToExecute deviceType --debug=true  #"
+        echo -e "[${YELLOW}HELP INFO${NC}] #  --ets=local                                                              #"
+    	echo -e "[${YELLOW}HELP INFO${NC}] #                                                                           #"
+        echo -e "[${YELLOW}HELP INFO${NC}] #  parameters examples:                                                     #"
+        echo -e "[${YELLOW}HELP INFO${NC}] #     pathToApk with path => /Users/marco/wire-client.apk                   #"
+        echo -e "[${YELLOW}HELP INFO${NC}] #     pathToApk without path => wire-client.apk (in order to use this       #"
+        echo -e "[${YELLOW}HELP INFO${NC}] #     you need to specifiy WIRE_CLIENT_PATH in your bash profile)           #"
+        echo -e "[${YELLOW}HELP INFO${NC}] #                                                                           #"
+        echo -e "[${YELLOW}HELP INFO${NC}] #     testToExecute => @rc, @C700020, @audiomessage                         #"
+        echo -e "[${YELLOW}HELP INFO${NC}] #                                                                           #"
+        echo -e "[${YELLOW}HELP INFO${NC}] #     deviceType => android, android-tablet                                 #"
+        echo -e "[${YELLOW}HELP INFO${NC}] #                                                                           #"
+        echo -e "[${YELLOW}HELP INFO${NC}] #     --debug=true|false                                                    #"
+        echo -e "[${YELLOW}HELP INFO${NC}] #                                                                           #"
+        echo -e "[${YELLOW}HELP INFO${NC}] #     --ets=local|remote                                                    #" 
+        echo -e "[${YELLOW}HELP INFO${NC}] #                                                                           #"
+        echo -e "[${YELLOW}HELP INFO${NC}] #     Enjoy the script :)                                                   #"
+        echo -e "[${YELLOW}HELP INFO${NC}] ############################################################################"
+        return 1;
+
+    fi
+	#security check if all parameters are correct
+	if [[ $1 == *".apk" ]]; then
+  		echo -e "[${BLUE}RUNZ INFO${NC}] Apk found path is:$1"
+	else
+		echo -e "[${RED}RUNZ ERROR${NC}] You have to specify the apk file name. Exiting"
+		return -1;
+	fi
+
+    #identify the client type to define the package name
+    if [[ $1 == *"-dev-"* ]]; then
+    	clientType=com.waz.zclient.dev
+    elif [[ $1 == *"-internal-"* ]]; then
+        clientType=com.wire.internal
+    elif [[ $1 == *"-candidate-"* ]]; then
+    	clientType=com.wire.candidate
+    elif [[ $1 == *"-qa-"* ]]; then
+        clientType=com.wire.qa
+    elif [[ $1 == *"-production-"* ]]; then
+    	clientType=com.wire
+    elif [[ $1 == *"-experimental-"* ]]; then
+        clientType=com.wire.x
+    else
+    	echo -e "[${RED}RUNZ ERROR${NC}] This client type is not know. Exiting"
+        return -1
+    fi
+	echo -e "[${BLUE}RUNZ INFO${NC}] Client type found. package name:$clientType"
+
+
+    #check if the test identifier has an @
+	if [[ $2 == "@"* ]]; then
+  		echo -e "[${BLUE}RUNZ INFO${NC}] Test Identifier found:$2"
+	else
+		echo -e "[${RED}RUNZ ERROR${NC}] Test identifier not found. Exiting"
+		return 1;
+	fi
+	
+	#check if deviceType is supported by this script yet
+	if [[ $3 == "android"* ]]; then
+	  	echo -e "[${BLUE}RUNZ INFO${NC}] DeviceType found:$3"
+		deviceType=$3
+	else
+		echo -e "[${RED}RUNZ ERROR${NC}] This DeviceType is not supported ($3). Exiting"
+		return 1;
+	fi
+
+	if [[ $4 == "--debug=true" ]]; then
+		debug=" -Dmaven.surefire.debug"
+	else
+		debug=""
+	fi
+
+	if [[ $5 == "--ets=local" ]]; then
+		ets=" -De2eTestServiceUrl=http://localhost:21080"
+	else
+		ets=""
+	fi
+
+
+	#check if the app path contains slash, if so we ignore the $WIRE_CLIENT_PATH variable
+	if [[ ! $1 == *"/"* ]]; then
+		#check if the path has been set to the clients in the bash_profile
+		if [ -z "$WIRE_CLIENT_PATH" ]; then
+			echo -e "[${BLUE}RUNZ INFO${NC}] The app path is not valid and $WIRE_CLIENT_PATH has not been set. Please fix one of those"
+			return -4;
+		else
+      			clientPath=$WIRE_CLIENT_PATH
+		fi
+	else
+		clientPath=""
+	fi
+
+    echo -e "[${BLUE}RUNZ INFO${NC}] Executing test with the following call: mvn -DappPath=$clientPath$1 -Dpackage=$clientType -Dpicklejar.tag=$2$ets --also-make --projects $deviceType$debug clean install"
+	mvn -DappPath=$clientPath$1 -Dpackage=$clientType -Dpicklejar.tag=$2$ets --also-make --projects $deviceType$debug clean install
+}

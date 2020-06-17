@@ -1,0 +1,11 @@
+multiinstall() {
+    adb devices | tail -n +2 | cut -sf 1 | xargs -I {} adb -s {} install -r $1
+}
+
+multitype() {
+    adb devices | tail -n +2 | cut -sf 1 | xargs -I {} adb -s {} -d shell input text $1
+}
+
+multicommand() {
+    adb devices | tail -n +2 | cut -sf 1 | xargs -I {} adb -s {} -d $*
+}
